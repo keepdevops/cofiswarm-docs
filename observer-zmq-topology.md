@@ -42,6 +42,33 @@ The observer can alternatively tail the SSE stream (`COFISWARM_BRIDGE_URL` →
 `swarm.observer.model.*` (per-model dispatch, req/reply) and `swarm.observer.tokens.*`
 (streamed tokens + usage) topics flow over the same carrier.
 
+## 1b. Browser panel — observer-gateway (WebSocket)
+
+`cofiswarm-observer-gateway` exposes the bus to browser dashboards over a persistent,
+full-duplex WebSocket. It is an ordinary bus participant: it SUBs the egress `:5557` for
+live events (fanned out to every connected dashboard) and PUBs browser **commands** onto
+the ingress `:5556`. Commands are guarded by `COFISWARM_CMD_PREFIX` (default
+`swarm.observer.`) so a browser cannot inject arbitrary topics; each gets an explicit
+ack/error reply. A slow dashboard drops frames rather than back-pressuring the bus reader.
+
+```
+   browser (Observer Panel)
+        │  ws(s)://:8820/ws   (persistent full-duplex)
+        ▼
+ ┌──────────────────────────────────────────┐
+ │     cofiswarm-observer-gateway (Go)        │
+ │  hub fan-out  ·  /  dashboard  ·  /healthz │
+ └───────┬───────────────────────────▲────────┘
+   events │ SUB egress :5557          │ commands PUB ingress :5556
+          ▼                           │ (swarm.observer.* only)
+        cofiswarm-zmq-bridge  ◀───────┘
+```
+
+This is a read **and** write path: events flow browser-ward from the egress, while
+dashboard commands flow bus-ward through the ingress — the same carrier the observer and
+components use. The gateway holds no roster state of its own (the observer remains the
+telemetry hub); it is a pure WebSocket⇄ZMQ bridge.
+
 ## 2. Who publishes what (from topics.yaml)
 
 ```
@@ -79,6 +106,7 @@ The observer can alternatively tail the SSE stream (`COFISWARM_BRIDGE_URL` →
  kv policy      cofiswarm-kvpool             (eviction, token budget)
  inference      cofiswarm-infer-{llama,mlx,vllm,ollama,sglang}
  telemetry hub  cofiswarm-observer :8016     (presence, alerts, dispatch, metrics)
+ panel gateway  cofiswarm-observer-gateway :8820 (browser WebSocket ⇄ ZMQ bus)
  the bus        cofiswarm-zmq-bridge :5555 control · :5556 ingress · :5557 egress
 ```
 
@@ -99,7 +127,12 @@ Relevant env:
 - Observer: `COFISWARM_ZMQ_EGRESS_ADDR` (subscribe target), `COFISWARM_ZMQ_FILTER`
   (subject prefix, default `swarm.`), `COFISWARM_BRIDGE_URL` (HTTP base for presence
   republish + SSE fallback).
+- Observer-gateway: `COFISWARM_ZMQ_EGRESS_ADDR` (events SUB), `COFISWARM_ZMQ_ADDR`
+  (commands PUB to the ingress; unset = read-only), `COFISWARM_CMD_PREFIX` (allowed
+  command-topic prefix, default `swarm.observer.`), `COFISWARM_WS_ORIGINS` (WebSocket
+  origin allowlist; empty = same-origin).
 
-Implemented in `cofiswarm-zmq-bridge` PR #8 (forwarder) and `cofiswarm-observer`
-PR #3 (egress subscriber). The topic names (`swarm.observer.*`) map 1:1 onto NATS
-subjects, so the `nats` backend carries the identical control plane.
+Implemented in `cofiswarm-zmq-bridge` PR #8 (forwarder), `cofiswarm-observer` PR #3
+(egress subscriber), and `cofiswarm-observer-gateway` (WebSocket panel). The topic names
+(`swarm.observer.*`) map 1:1 onto NATS subjects, so the `nats` backend carries the
+identical control plane.
