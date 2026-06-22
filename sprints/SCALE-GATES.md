@@ -67,10 +67,12 @@ Aligned with `kv_auto_clear.h` defaults:
 | **WARN** | 0.60 – 0.74 peak | Tune tokens / quant; re-run; document in SCALE-N.md |
 | **FAIL** | ≥ 0.75 sustained (≥ 3 consecutive probes) | **Do not advance**; reduce agents, slots, or ctx |
 
-Probe:
+Probe (coordinator, or the parity slot-manager endpoint — see §7):
 
 ```bash
 curl -s http://127.0.0.1:8000/api/pressure | jq '.[] | {port, names, usage}'
+# or, post control-plane split:
+curl -s http://slot-manager:8013/api/pressure | jq '.[] | {port, names, usage}'
 ```
 
 ### 3.2 Stability gates
@@ -189,18 +191,30 @@ Create `docs/sprints/SCALE-N.md` per sprint:
 
 ---
 
-## 7. Future: kvpool + slot-manager gates
+## 7. kvpool + slot-manager gates (control plane split — landed)
 
-When control plane splits:
+`cofiswarm-slot-manager` has landed on **`:8013`** (`cofiswarm-common/ports/well-known.yaml`)
+and exposes a coordinator-parity pressure API, so the gate probe can target it directly
+instead of the coordinator:
 
-| Today | Future probe |
-|-------|--------------|
-| `GET /api/pressure` | `GET http://slot-manager:PORT/v1/endpoints/pressure` |
-| `kv_auto_clear` | `kvpool` policy events on ZMQ `swarm.kvpool.*` |
-| Per-port semaphores | `slot-manager` acquire/release metrics |
+| Coordinator (legacy) | slot-manager (now available) |
+|----------------------|------------------------------|
+| `GET http://127.0.0.1:8000/api/pressure` | `GET http://slot-manager:8013/api/pressure` (per-endpoint KV pressure, parity) |
+| n/a | `GET http://slot-manager:8013/v1/endpoints` (registered endpoints) |
+| `POST .../api/pressure/evict` | `POST http://slot-manager:8013/api/pressure/evict` (targeted eviction) |
+| `kv_auto_clear` (in-process) | `cofiswarm-kvpool` policy events on ZMQ `swarm.kvpool.evict` / `swarm.kvpool.pressure` |
+| Per-port semaphores | `cofiswarm-slot-manager` slot pressure on ZMQ `swarm.slot.erase` / `swarm.slot.pressure` |
 
-Gate thresholds (**0.60 / 0.75**) remain unchanged; only probe URLs change.
-Update this doc when `cofiswarm-slot-manager` lands.
+Gate thresholds (**0.60 / 0.75**) remain unchanged; only the probe URL changes. The
+`/api/pressure` response shape is parity with the coordinator, so the §3.1 `jq` probe works
+verbatim against `:8013`:
+
+```bash
+curl -s http://slot-manager:8013/api/pressure | jq '.[] | {port, names, usage}'
+```
+
+During the bridge-until-cutover window the coordinator endpoint may still be authoritative
+for live KV; prefer the slot-manager probe once the swarm is launched through it.
 
 ---
 
