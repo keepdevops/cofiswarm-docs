@@ -1,5 +1,10 @@
 # Matrix Swarm
 
+> **Historical note (legacy monorepo doc):** the RAG store described below as
+> "pgvector"/Postgres is superseded. The current app uses a **serverless
+> sqlite-vec** store (a local `.db` file) with the `nomic-embed-text-v1.5`
+> embedder — no Postgres/pgvector container, no `RAG_DSN`. See `CAPABILITIES.md`.
+
 [![npm version](https://img.shields.io/npm/v/@keepdevops/matrix?style=flat-square&logo=npm&color=00ccff)](https://www.npmjs.com/package/@keepdevops/matrix)
 [![npm downloads](https://img.shields.io/npm/dm/@keepdevops/matrix?style=flat-square&color=8a8a99&label=downloads)](https://www.npmjs.com/package/@keepdevops/matrix)
 [![GitHub stars](https://img.shields.io/github/stars/keepdevops/cofiswarmdev?style=flat-square&logo=github&color=00ff9d)](https://github.com/keepdevops/cofiswarmdev)

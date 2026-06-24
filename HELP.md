@@ -101,7 +101,7 @@ python3 scripts/brewctl launch
 | Only one agent responds in router mode | `foreman` system prompt may need tuning — edit it with ✏️ in CONFIGURE. |
 | Pipeline output is garbage after stage 2 | A stage failed; check `meta.errors[]` in the API response. The coordinator skips the bad stage automatically. |
 | MLX server not starting | Ensure `mlx_lm` is installed (`pip install mlx-lm`) and `MATRIX_MLX_PYTHON` points to the right interpreter. |
-| RAG returns no results | Check `bash scripts/rag-docker-compose.sh status`; re-index with `python3 scripts/brewctl rag index . --embedder hash --force`. |
+| RAG returns no results | RAG is serverless (sqlite-vec); check the store file at `$RAG_SQLITE_PATH` (default `var/lib/cofiswarm/rag/index/rag.db`), then re-index with `python3 scripts/brewctl rag index . --embedder hash --force`. |
 | Out of VRAM / KV overflow | Reduce active agents to 5–7. Click CLEAR KV between prompts. |
 | Cascade taking too long | A slow/runaway proposer is holding the synthesis barrier. Lower `MATRIX_CASCADE_AGENT_DEADLINE_SECS` (default 90s) in `scripts/matrix-env.sh` and relaunch. |
 
