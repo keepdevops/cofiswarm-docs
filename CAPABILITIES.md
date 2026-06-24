@@ -308,7 +308,7 @@ count but fine for relative comparison.
 | Agent system prompts | Both active + source config on every `PUT /api/agents/<name>/prompt` | Immediate + durable when `MATRIX_SOURCE_CONFIG` is set. |
 | Conversation sessions | `sessions.json` in the project root | Persists across restarts; cleared per-session by CLEAR KV. |
 | Response cache | In-memory; managed via `/api/cache/*` | Cleared on coordinator restart or explicit `POST /api/cache/clear`. |
-| RAG index | pgvector `chunks` table (Docker container) | Persists across restarts; re-index with `brewctl rag index`. |
+| RAG index | sqlite-vec `chunks` table (local `.db` file) | Persists across restarts; re-index with `brewctl rag index`. |
 
 If `MATRIX_SOURCE_CONFIG` is unset, only the active config is written — fine for
 manual launches but per-mode edits will vanish on the next UI redeploy.
@@ -372,7 +372,7 @@ runs the real coordinator binary on port 18000. No real models needed — runs i
 | `test_build_swarm_config.py` | Config generation from `config/agents/*.json`. |
 | `tests/mlx_coordinator/` | MLX coordinator serialisation, session management, service helpers. |
 | `tests/modes/` | Python orchestration mode plugins (flat/pipeline/cascade/router + speculative/map_reduce/…). |
-| `tests/rag/` | pgvector chunker, embedder, store, retrieve, hash embedder byte-match. |
+| `tests/rag/` | sqlite-vec chunker, embedder, store, retrieve, hash embedder byte-match. |
 | `tests/telemetry/` | structlog JSON output, Prometheus `/metrics` endpoint. |
 
 ---
@@ -391,7 +391,7 @@ runs the real coordinator binary on port 18000. No real models needed — runs i
 | `MATRIX_LLAMA_SERVER` | (resolved from PATH) | Path to `llama-server` binary. |
 | `MATRIX_MLX_PYTHON` | (resolved) | Python interpreter that has `mlx_lm` installed. |
 | `MATRIX_SYNTHESIS_MAX_PROMPT_TOKENS` | `1400` | Approximate max prompt size for pipeline/cascade/stream **synthesis** (concatenated agent outputs). Lower if synthesizer uses a small `--ctx-size`; raise when you increase model context. |
-| `RAG_DSN` | (unset) | PostgreSQL DSN for the pgvector RAG store. Overrides the compiled-in default. |
+| `RAG_SQLITE_PATH` | (under `var/lib/cofiswarm/rag/index/rag.db`) | Path to the sqlite-vec RAG store `.db` file. Overrides the compiled-in default. |
 
 ---
 
@@ -442,10 +442,10 @@ Matrix Swarm supports multi-turn conversations per agent session.
 ### CLI indexing
 
 ```bash
-# Start pgvector (convenience wrapper)
-bash scripts/rag-docker-compose.sh up
+# No store to start — RAG is serverless (sqlite-vec, a local .db file created on
+# first write). Optionally pin the store path with RAG_SQLITE_PATH.
 
-# Index a directory (auto-runs on `brewctl launch` when container is running)
+# Index a directory (auto-runs on `brewctl launch`)
 python3 scripts/brewctl rag index ./cpp_core --embedder hash
 
 # Index multiple directories
@@ -459,12 +459,9 @@ python3 scripts/brewctl rag query "kv router" --embedder hash
 python3 scripts/brewctl rag query "session management" --top-k 5 --embedder hash
 ```
 
-`brewctl launch` auto-indexes the repo when the pgvector container is running.
-Override the DSN with `RAG_DSN=postgresql://...`.
-
-`scripts/rag-docker-compose.sh` subcommands: `up`, `down`, `restart`, `logs`,
-`status`, `wait` (blocks until `pg_isready`), `psql` (shell into `matrix_rag`),
-`nuke` (down + volume wipe). Auto-detects `docker compose` vs legacy `docker-compose`.
+`brewctl launch` auto-indexes the repo on startup. The store is a local
+sqlite-vec database; point `RAG_SQLITE_PATH` at a file to relocate it (two
+checkouts stay isolated just by using different paths — no shared container).
 
 ### Per-agent RAG targeting
 

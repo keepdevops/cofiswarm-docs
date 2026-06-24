@@ -165,9 +165,9 @@ placeholders, expanded at load time, **failing loudly** on any unresolved var.
 - **Multi-turn conversation threads** — sessions auto-continue after the first
   broadcast; `ConversationThread` shows turn history; persisted in
   `sessions.json`, reset by CLEAR KV.
-- **RAG context injection** — pgvector-backed, per-agent targeting; ingest /
-  manage / retrieve via the RAG panels and `orchestration/rag/` (chunker,
-  embed, retrieve, store, jobs). Docker pgvector under `docker/pgvector`.
+- **RAG context injection** — sqlite-vec-backed (serverless, local `.db` file),
+  per-agent targeting; ingest / manage / retrieve via the RAG panels and
+  `orchestration/rag/` (chunker, embed, retrieve, store, jobs).
 - **Per-agent circuit breakers** and live agent health badges/dashboard.
 - **Live metrics & Monitor popout** — KV-cache pressure per port, Unified
   Memory gauge, MLX per-port Q/W/D pressure, opt-in RSS event feeds
