@@ -513,8 +513,8 @@ Allocate in `cofiswarm-common` — avoid collision with legacy localhost ports.
 | kvpool | 8014 | — |
 | agent-registry | 8012 | — |
 | config API | 8011 | matrix_config 8011 |
-| orchestrate | 3003 | same |
-| rag | 8001 | same |
+| orchestrate | 8025 | orchestrate 3003 (monorepo) |
+| rag | 8019 | rag 8001 (monorepo) |
 | mode-flat | 8021 | — |
 | mode-pipeline | 8022 | — |
 | mode-cascade | 8023 | — |
